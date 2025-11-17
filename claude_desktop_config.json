@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "jira": {
+      "command": "python",
+      "args": [
+        "/path/to/MCP-Jira/src/mcp_jira_server.py"
+      ],
+      "env": {
+        "JIRA_URL": "https://your-jira-instance.com",
+        "JIRA_PERSONAL_ACCESS_TOKEN": "${env:JIRA_PERSONAL_ACCESS_TOKEN}",
+        "JIRA_VERIFY_SSL": "true"
+      }
+    }
+  }
+}
