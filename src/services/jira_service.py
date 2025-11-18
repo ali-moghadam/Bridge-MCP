@@ -1,57 +1,46 @@
-#!/usr/bin/env python3
 """
-MCP Jira Server - A Model Context Protocol server for Jira integration.
+Jira Service Module for Bridge-MCP.
 
-This server provides tools to read task details from a private Jira instance.
+This module provides all Jira-specific functionality including:
+- Jira client initialization
+- Tool definitions
+- Tool handlers
 """
 
 import os
-import sys
 import logging
 import base64
 import requests
 from typing import Any, Sequence, Optional, cast
-from dotenv import load_dotenv
 
 from jira import JIRA
 from jira.exceptions import JIRAError
 
-from mcp.server import Server
 from mcp.types import (
     Tool,
     TextContent,
     ImageContent,
     EmbeddedResource,
 )
-from mcp.server.stdio import stdio_server
 
-# Load environment variables
-load_dotenv()
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger("mcp-jira-server")
+logger = logging.getLogger("bridge-mcp.jira")
 
 # Jira configuration from environment (PAT-only auth)
 JIRA_URL = os.getenv("JIRA_URL")
-# Use JIRA_PERSONAL_ACCESS_TOKEN exclusively
 JIRA_PERSONAL_ACCESS_TOKEN = os.getenv("JIRA_PERSONAL_ACCESS_TOKEN")
-# SSL verification flag (default True). Accepts: true/false/1/0/yes/no
 JIRA_VERIFY_SSL = os.getenv("JIRA_VERIFY_SSL", "true").strip().lower() in {"1", "true", "yes", "on"}
 
-# Initialize Jira client
+# Module-level Jira client
 jira_client: Optional[JIRA] = None
 
-def init_jira_client() -> JIRA:
+
+def init_jira_client() -> Optional[JIRA]:
     """Initialize the Jira client using Personal Access Token (PAT)."""
     global jira_client
 
     if not JIRA_PERSONAL_ACCESS_TOKEN:
-        logger.error("Jira Personal Access Token not found in environment variables")
-        raise ValueError("JIRA_PERSONAL_ACCESS_TOKEN must be set")
+        logger.warning("Jira Personal Access Token not found in environment variables. Jira features will be disabled.")
+        return None
 
     try:
         client = JIRA(
@@ -66,7 +55,10 @@ def init_jira_client() -> JIRA:
         return client
     except JIRAError as e:
         logger.error(f"Failed to connect to Jira: {e}")
-        raise
+        return None
+    except Exception as e:
+        logger.error(f"Unexpected error connecting to Jira: {e}")
+        return None
 
 
 def format_issue_details(issue) -> dict[str, Any]:
@@ -228,13 +220,8 @@ def is_supported_media(mime_type: str) -> bool:
     return mime_type.lower() in supported_types
 
 
-# Initialize MCP server
-app = Server("mcp-jira-server")
-
-
-@app.list_tools()
-async def list_tools() -> list[Tool]:
-    """List available Jira tools."""
+def get_jira_tools() -> list[Tool]:
+    """Return the list of Jira tools available."""
     return [
         Tool(
             name="get_jira_issue",
@@ -319,17 +306,20 @@ async def list_tools() -> list[Tool]:
     ]
 
 
-@app.call_tool()
-async def call_tool(name: str, arguments: Any) -> Sequence[TextContent | ImageContent | EmbeddedResource]:
+async def handle_jira_tool_call(
+    name: str,
+    arguments: Any
+) -> Sequence[TextContent | ImageContent | EmbeddedResource]:
     """Handle tool calls for Jira operations."""
 
     if jira_client is None:
         return [TextContent(
             type="text",
-            text="Error: Jira client not initialized. Please check your PAT credentials."
+            text="Error: Jira client not initialized. Please check your JIRA_PERSONAL_ACCESS_TOKEN."
         )]
 
     client = cast(JIRA, jira_client)
+
     try:
         if name == "get_jira_issue":
             issue_key = arguments.get("issue_key")
@@ -548,35 +538,12 @@ async def call_tool(name: str, arguments: Any) -> Sequence[TextContent | ImageCo
             return results
 
         else:
-            return [TextContent(type="text", text=f"Unknown tool: {name}")]
+            return [TextContent(type="text", text=f"Unknown Jira tool: {name}")]
 
     except Exception as e:
-        logger.error(f"Error in tool {name}: {e}")
+        logger.error(f"Error in Jira tool {name}: {e}")
         return [TextContent(
             type="text",
             text=f"Error executing {name}: {str(e)}"
         )]
 
-
-async def main() -> None:
-    """Main entry point for the MCP server."""
-    try:
-        # Initialize Jira client
-        init_jira_client()
-
-        # Run the server
-        async with stdio_server() as (read_stream, write_stream):
-            logger.info("MCP Jira Server starting...")
-            await app.run(
-                read_stream,
-                write_stream,
-                app.create_initialization_options()
-            )
-    except Exception as e:
-        logger.error(f"Server error: {e}")
-        sys.exit(1)
-
-
-if __name__ == "__main__":
-    import asyncio
-    asyncio.run(main())

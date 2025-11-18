@@ -1,14 +1,19 @@
 {
   "mcpServers": {
-    "jira": {
+    "bridge-mcp": {
       "command": "python",
       "args": [
-        "/path/to/MCP-Jira/src/mcp_jira_server.py"
+        "/path/to/Bridge-MCP/src/bridge_mcp_server.py"
       ],
       "env": {
         "JIRA_URL": "https://your-jira-instance.com",
         "JIRA_PERSONAL_ACCESS_TOKEN": "${env:JIRA_PERSONAL_ACCESS_TOKEN}",
-        "JIRA_VERIFY_SSL": "true"
+        "JIRA_VERIFY_SSL": "true",
+        "GITLAB_URL": "https://gitlab.com",
+        "GITLAB_PERSONAL_ACCESS_TOKEN": "${env:GITLAB_PERSONAL_ACCESS_TOKEN}",
+        "CONFLUENCE_URL": "https://your-confluence-instance.com",
+        "CONFLUENCE_API_TOKEN": "${env:CONFLUENCE_API_TOKEN}",
+        "CONFLUENCE_USERNAME": "${env:CONFLUENCE_USERNAME}"
       }
     }
   }

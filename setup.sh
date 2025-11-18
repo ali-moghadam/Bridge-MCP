@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Setup script for MCP Jira Server
+# Setup script for Bridge-MCP
 
-echo "Setting up MCP Jira Server..."
+echo "Setting up Bridge-MCP..."
 
 # Check if Python 3 is installed
 if ! command -v python3 &> /dev/null; then
@@ -31,19 +31,29 @@ pip install -r requirements.txt
 # Create .env file from example if it doesn't exist
 if [ ! -f ".env" ]; then
     echo "Creating .env file from template..."
-    cp .env.example .env
+    cp .env.example .env 2>/dev/null || touch .env
     echo ""
-    echo "⚠️  IMPORTANT: Please edit .env file and add your Jira credentials:"
+    echo "⚠️  IMPORTANT: Please edit .env file and add your service credentials:"
+    echo "   For Jira:"
     echo "   - JIRA_URL (your Jira instance URL)"
     echo "   - JIRA_PERSONAL_ACCESS_TOKEN"
+    echo ""
+    echo "   For GitLab (coming soon):"
+    echo "   - GITLAB_URL"
+    echo "   - GITLAB_PERSONAL_ACCESS_TOKEN"
+    echo ""
+    echo "   For Confluence (coming soon):"
+    echo "   - CONFLUENCE_URL"
+    echo "   - CONFLUENCE_API_TOKEN"
 fi
 
 echo ""
-echo "✅ Setup complete!"
+echo "✅ Bridge-MCP setup complete!"
 echo ""
 echo "Next steps:"
-echo "1. Edit .env file and add your Jira credentials"
-echo "2. Connect to your VPN (FortiClient) if needed"
-echo "3. Run the server: python src/mcp_jira_server.py"
+echo "1. Edit .env file and add your service credentials"
+echo "2. Connect to your VPN (FortiClient or similar) if needed"
+echo "3. Run the server: python src/bridge_mcp_server.py"
+echo "4. Configure Claude Desktop or GitHub Copilot (see README.md)"
 echo ""
 

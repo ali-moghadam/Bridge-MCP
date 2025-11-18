@@ -1,11 +1,16 @@
-# MCP Jira Server - Tool Reference
+# Bridge-MCP - Tool Reference
 
-This document describes all the available tools in the MCP Jira Server.
+This document describes all the available tools in Bridge-MCP.
 
 ## Authentication
-- This server uses Personal Access Token (PAT) authentication to Jira.
-- Set `JIRA_PAT` in your environment (see README/QUICKSTART).
-- Username/password are not used.
+Bridge-MCP uses token-based authentication for all integrations:
+- **Jira**: Personal Access Token (PAT) — Set `JIRA_PERSONAL_ACCESS_TOKEN` in your environment
+- **GitLab** (coming soon): Personal Access Token — Set `GITLAB_PERSONAL_ACCESS_TOKEN`
+- **Confluence** (coming soon): API Token — Set `CONFLUENCE_API_TOKEN`
+
+Username/password authentication is not used for security reasons.
+
+## Jira Tools
 
 ## Tool: get_jira_issue
 
