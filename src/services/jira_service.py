@@ -25,11 +25,6 @@ from mcp.types import (
 
 logger = logging.getLogger("bridge-mcp.jira")
 
-# Jira configuration from environment (PAT-only auth)
-JIRA_URL = os.getenv("JIRA_URL")
-JIRA_PERSONAL_ACCESS_TOKEN = os.getenv("JIRA_PERSONAL_ACCESS_TOKEN")
-JIRA_VERIFY_SSL = os.getenv("JIRA_VERIFY_SSL", "true").strip().lower() in {"1", "true", "yes", "on"}
-
 # Module-level Jira client
 jira_client: Optional[JIRA] = None
 
@@ -38,20 +33,25 @@ def init_jira_client() -> Optional[JIRA]:
     """Initialize the Jira client using Personal Access Token (PAT)."""
     global jira_client
 
-    if not JIRA_PERSONAL_ACCESS_TOKEN:
+    # Read configuration from environment (after load_dotenv() has been called)
+    jira_url = os.getenv("JIRA_URL")
+    jira_token = os.getenv("JIRA_PERSONAL_ACCESS_TOKEN")
+    jira_verify_ssl = os.getenv("JIRA_VERIFY_SSL", "true").strip().lower() in {"1", "true", "yes", "on"}
+
+    if not jira_token:
         logger.warning("Jira Personal Access Token not found in environment variables. Jira features will be disabled.")
         return None
 
     try:
         client = JIRA(
-            server=JIRA_URL,
-            token_auth=JIRA_PERSONAL_ACCESS_TOKEN,
-            options={'verify': JIRA_VERIFY_SSL}
+            server=jira_url,
+            token_auth=jira_token,
+            options={'verify': jira_verify_ssl}
         )
         # Simple call to ensure auth is valid
         _ = client.server_info()
         jira_client = client
-        logger.info(f"Successfully connected to Jira at {JIRA_URL} with PAT auth (verify_ssl={JIRA_VERIFY_SSL})")
+        logger.info(f"Successfully connected to Jira at {jira_url} with PAT auth (verify_ssl={jira_verify_ssl})")
         return client
     except JIRAError as e:
         logger.error(f"Failed to connect to Jira: {e}")
@@ -66,11 +66,14 @@ def format_issue_details(issue) -> dict[str, Any]:
     try:
         fields = issue.fields
 
+        # Get Jira server URL from the client
+        server_url = jira_client.server_url if jira_client else os.getenv("JIRA_URL", "")
+
         # Basic issue information
         issue_data = {
             "key": issue.key,
             "id": issue.id,
-            "url": f"{JIRA_URL}/browse/{issue.key}",
+            "url": f"{server_url}/browse/{issue.key}",
             "summary": fields.summary,
             "description": fields.description or "No description",
             "status": fields.status.name,
@@ -176,18 +179,22 @@ def get_issue_attachments(issue_key: str) -> list[dict[str, Any]]:
 
 def download_attachment(attachment_url: str) -> Optional[bytes]:
     """Download attachment content from Jira."""
-    if not JIRA_PERSONAL_ACCESS_TOKEN:
+    # Get credentials from environment
+    jira_token = os.getenv("JIRA_PERSONAL_ACCESS_TOKEN")
+    jira_verify_ssl = os.getenv("JIRA_VERIFY_SSL", "true").strip().lower() in {"1", "true", "yes", "on"}
+
+    if not jira_token:
         logger.error("Cannot download attachment: No PAT token available")
         return None
 
     try:
         headers = {
-            "Authorization": f"Bearer {JIRA_PERSONAL_ACCESS_TOKEN}"
+            "Authorization": f"Bearer {jira_token}"
         }
         response = requests.get(
             attachment_url,
             headers=headers,
-            verify=JIRA_VERIFY_SSL,
+            verify=jira_verify_ssl,
             timeout=30
         )
         response.raise_for_status()
@@ -387,13 +394,16 @@ async def handle_jira_tool_call(
                 result = f"# Search Results ({len(issues)} issues)\n\n"
                 result += f"**Query:** {jql}\n\n"
 
+                # Get Jira server URL from the client
+                server_url = jira_client.server_url if jira_client else os.getenv("JIRA_URL", "")
+
                 for issue in issues:
                     fields = issue.fields
                     result += f"## {issue.key}: {fields.summary}\n"
                     result += f"- **Status:** {fields.status.name}\n"
                     result += f"- **Priority:** {fields.priority.name if fields.priority else 'None'}\n"
                     result += f"- **Assignee:** {fields.assignee.displayName if fields.assignee else 'Unassigned'}\n"
-                    result += f"- **URL:** {JIRA_URL}/browse/{issue.key}\n\n"
+                    result += f"- **URL:** {server_url}/browse/{issue.key}\n\n"
 
                 return [TextContent(type="text", text=result)]
             except JIRAError as e:

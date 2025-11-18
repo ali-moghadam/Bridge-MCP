@@ -130,7 +130,7 @@ async def call_tool(name: str, arguments: Any) -> Sequence[TextContent | ImageCo
         return await handle_jira_tool_call(name, arguments)
 
     # GitLab tools (when implemented)
-    gitlab_tools = {"get_gitlab_project", "list_merge_requests", "get_merge_request",
+    gitlab_tools = {"get_gitlab_project", "list_gitlab_projects", "list_merge_requests", "get_merge_request",
                     "list_pipelines", "get_pipeline", "list_gitlab_issues", "get_gitlab_issue"}
     if name in gitlab_tools:
         if not enabled_services.get("gitlab", False):

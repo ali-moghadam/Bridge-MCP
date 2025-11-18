@@ -5,7 +5,7 @@ This document describes all the available tools in Bridge-MCP.
 ## Authentication
 Bridge-MCP uses token-based authentication for all integrations:
 - **Jira**: Personal Access Token (PAT) — Set `JIRA_PERSONAL_ACCESS_TOKEN` in your environment
-- **GitLab** (coming soon): Personal Access Token — Set `GITLAB_PERSONAL_ACCESS_TOKEN`
+- **GitLab**: Personal Access Token — Set `GITLAB_PERSONAL_ACCESS_TOKEN` (requires `api`, `read_api`, and `read_repository` scopes)
 - **Confluence** (coming soon): API Token — Set `CONFLUENCE_API_TOKEN`
 
 Username/password authentication is not used for security reasons.
@@ -253,6 +253,338 @@ A list of all attachments with:
 
 ---
 
+## Tool: get_issue_media
+
+Download and display images and videos attached to a Jira issue.
+
+### Parameters
+
+- `issue_key` (string, required): The Jira issue key (e.g., "BAL-7437")
+- `max_files` (number, optional): Maximum number of media files to return (default: 10)
+
+### Example Usage
+
+```
+Show me the images from issue BAL-7437
+```
+
+### Returns
+
+Inline image content for all image and video attachments on the issue. Supported formats include PNG, JPEG, GIF, MP4, and WebM.
+
+---
+
+## GitLab Tools
+
+## Tool: get_gitlab_project
+
+Get detailed information about a GitLab project by its ID or path.
+
+### Parameters
+
+- `project_id` (string, required): The project ID (numeric) or path (e.g., 'group/project', 'username/repo')
+
+### Example Usage
+
+```
+Get details for GitLab project mygroup/myproject
+```
+
+### Returns
+
+A formatted response with:
+- Project ID, name, and path
+- Description
+- Web URL
+- Default branch
+- Visibility (public/private/internal)
+- Creation and last activity dates
+- Star and fork counts
+
+### Example Output
+
+```
+# Project: awesome-project
+
+**ID:** 12345
+**Path:** mygroup/awesome-project
+**Description:** An awesome project for building amazing things
+
+**Details:**
+- **URL:** https://gitlab.com/mygroup/awesome-project
+- **Default Branch:** main
+- **Visibility:** private
+- **Created:** 2024-01-15T10:30:00.000Z
+- **Last Activity:** 2025-11-18T09:45:00.000Z
+- **Stars:** 42
+- **Forks:** 7
+```
+
+---
+
+## Tool: list_gitlab_projects
+
+List GitLab projects accessible to the authenticated user.
+
+### Parameters
+
+- `owned` (boolean, optional): List only owned projects (default: false)
+- `search` (string, optional): Search projects by name
+- `max_results` (number, optional): Maximum number of projects to return (default: 20)
+
+### Example Usage
+
+```
+List my GitLab projects
+Show all projects containing "backend" in the name
+```
+
+### Returns
+
+A list of projects with basic information including ID, name, path, description, and URL.
+
+---
+
+## Tool: get_merge_request
+
+Get detailed information about a specific merge request.
+
+### Parameters
+
+- `project_id` (string, required): The project ID or path
+- `mr_iid` (number, required): The merge request IID (internal ID shown in GitLab UI)
+
+### Example Usage
+
+```
+Show me details for merge request !123 in project mygroup/myproject
+```
+
+### Returns
+
+A formatted response with:
+- MR title and description
+- State (opened, merged, closed)
+- Author and assignees
+- Source and target branches
+- Web URL
+- Creation and update timestamps
+- Merge status and pipeline status
+- Labels and milestone
+
+### Example Output
+
+```
+# MR !123: Add user authentication feature
+
+**State:** opened
+**Author:** Jane Smith
+**Assignees:** John Doe, Alice Johnson
+
+**Branches:**
+- **Source:** feature/user-auth
+- **Target:** main
+
+**Status:**
+- **Mergeable:** Yes
+- **Pipeline:** passed
+
+**URL:** https://gitlab.com/mygroup/myproject/-/merge_requests/123
+
+**Created:** 2025-11-15T10:30:00.000Z
+**Updated:** 2025-11-18T14:20:00.000Z
+
+## Description
+This MR implements user authentication using JWT tokens...
+
+**Labels:** authentication, security, backend
+**Milestone:** v2.0
+```
+
+---
+
+## Tool: list_merge_requests
+
+List merge requests for a project.
+
+### Parameters
+
+- `project_id` (string, required): The project ID or path
+- `state` (string, optional): Filter by state: 'opened', 'closed', 'merged', or 'all' (default: 'opened')
+- `max_results` (number, optional): Maximum number of MRs to return (default: 20)
+
+### Example Usage
+
+```
+Show all open merge requests for mygroup/myproject
+List recently merged MRs in project 12345
+```
+
+### Returns
+
+A list of merge requests with key information including IID, title, state, author, and URL.
+
+---
+
+## Tool: list_pipelines
+
+List CI/CD pipelines for a project.
+
+### Parameters
+
+- `project_id` (string, required): The project ID or path
+- `ref` (string, optional): Filter by git ref (branch/tag name)
+- `status` (string, optional): Filter by status: 'running', 'pending', 'success', 'failed', 'canceled'
+- `max_results` (number, optional): Maximum number of pipelines to return (default: 20)
+
+### Example Usage
+
+```
+Show failed pipelines for mygroup/myproject
+List all pipelines running on the main branch
+```
+
+### Returns
+
+A list of pipelines with ID, status, ref (branch/tag), web URL, and creation timestamp.
+
+### Example Output
+
+```
+# Pipelines for mygroup/myproject (10 results)
+
+## Pipeline #54321
+- **Status:** success
+- **Ref:** main
+- **Created:** 2025-11-18T09:30:00.000Z
+- **URL:** https://gitlab.com/mygroup/myproject/-/pipelines/54321
+
+## Pipeline #54320
+- **Status:** failed
+- **Ref:** feature/new-api
+- **Created:** 2025-11-17T16:45:00.000Z
+- **URL:** https://gitlab.com/mygroup/myproject/-/pipelines/54320
+```
+
+---
+
+## Tool: get_pipeline
+
+Get detailed information about a specific pipeline including all jobs.
+
+### Parameters
+
+- `project_id` (string, required): The project ID or path
+- `pipeline_id` (number, required): The pipeline ID
+
+### Example Usage
+
+```
+Show details for pipeline 54321 in project mygroup/myproject
+```
+
+### Returns
+
+Detailed pipeline information including:
+- Pipeline ID, status, and ref
+- Web URL
+- Creation and update timestamps
+- All jobs in the pipeline with their statuses
+
+### Example Output
+
+```
+# Pipeline #54321
+
+**Status:** success
+**Ref:** main
+**URL:** https://gitlab.com/mygroup/myproject/-/pipelines/54321
+
+**Created:** 2025-11-18T09:30:00.000Z
+**Updated:** 2025-11-18T09:45:00.000Z
+
+## Jobs:
+1. **build** - success
+2. **test** - success
+3. **lint** - success
+4. **deploy** - success
+```
+
+---
+
+## Tool: list_gitlab_issues
+
+List issues for a GitLab project.
+
+### Parameters
+
+- `project_id` (string, required): The project ID or path
+- `state` (string, optional): Filter by state: 'opened' or 'closed' (default: 'opened')
+- `max_results` (number, optional): Maximum number of issues to return (default: 20)
+
+### Example Usage
+
+```
+Show open issues in mygroup/myproject
+List closed issues for project 12345
+```
+
+### Returns
+
+A list of issues with IID, title, state, author, assignees, and URL.
+
+---
+
+## Tool: get_gitlab_issue
+
+Get detailed information about a specific GitLab issue.
+
+### Parameters
+
+- `project_id` (string, required): The project ID or path
+- `issue_iid` (number, required): The issue IID (internal ID shown in GitLab UI)
+
+### Example Usage
+
+```
+Show details for issue #456 in project mygroup/myproject
+```
+
+### Returns
+
+Detailed issue information including:
+- Issue title and description
+- State (opened/closed)
+- Author and assignees
+- Labels and milestone
+- Web URL
+- Creation and update timestamps
+- Due date (if set)
+
+### Example Output
+
+```
+# Issue #456: Fix login bug
+
+**State:** opened
+**Author:** John Doe
+**Assignees:** Jane Smith
+
+**Labels:** bug, high-priority
+**Milestone:** v2.1
+
+**URL:** https://gitlab.com/mygroup/myproject/-/issues/456
+
+**Created:** 2025-11-16T10:00:00.000Z
+**Updated:** 2025-11-18T15:30:00.000Z
+**Due Date:** 2025-11-20
+
+## Description
+Users are unable to log in when using special characters in their password...
+```
+
+---
+
 ## Common Use Cases
 
 ### 1. Daily Standup Preparation
@@ -290,6 +622,41 @@ How many open issues does each person have in project BAL?
 ```
 
 Claude can search and analyze the results.
+
+### 6. Code Review Preparation
+
+```
+Show me all open merge requests for mygroup/backend-service
+Get details for MR !123 in mygroup/backend-service
+```
+
+### 7. Pipeline Monitoring
+
+```
+Show me failed pipelines for mygroup/frontend
+Check the status of pipeline 54321
+```
+
+### 8. Release Planning
+
+```
+List all merged MRs for project mygroup/api since last week
+Show me closed issues in mygroup/mobile-app
+```
+
+### 9. CI/CD Investigation
+
+```
+Show me all pipelines running on the main branch
+Get details for the latest pipeline in mygroup/service
+```
+
+### 10. Project Overview
+
+```
+Get details for GitLab project mygroup/awesome-app
+List all my GitLab projects
+```
 
 ---
 
@@ -337,6 +704,27 @@ Now show me the closed ones
 And the ones updated today
 ```
 
+### 6. GitLab Project Paths
+
+For GitLab, you can use either numeric IDs or project paths:
+- Numeric ID: `12345`
+- Project path: `mygroup/myproject` or `username/repo`
+
+Paths are usually easier to remember and use.
+
+### 7. MR and Issue IDs
+
+GitLab uses IIDs (internal IDs) for merge requests and issues:
+- When you see `!123` in GitLab UI, use `123` as the `mr_iid`
+- When you see `#456` in GitLab UI, use `456` as the `issue_iid`
+
+### 8. Pipeline Filtering
+
+When monitoring pipelines, use status filters to focus on what matters:
+- `failed` - Quickly identify broken builds
+- `running` - See what's currently in progress
+- `success` - Verify successful deployments
+
 ---
 
 ## Limitations
@@ -344,13 +732,13 @@ And the ones updated today
 ### Current Limitations
 
 1. **Read-Only**: This server only reads data, it cannot:
-   - Create issues
-   - Update issues
-   - Add comments
-   - Change status
-   - Assign issues
+   - Create or update Jira issues
+   - Create or merge GitLab merge requests
+   - Add comments or approve MRs
+   - Trigger pipelines or jobs
+   - Change issue/MR status or assignments
 
-2. **VPN Required**: You must be connected to your VPN (e.g., FortiClient) to access your private Jira instance
+2. **VPN Required**: You must be connected to your VPN (e.g., FortiClient) to access your private instances (Jira, GitLab, Confluence)
 
 3. **Authentication**: Uses Personal Access Token (PAT), not OAuth
 

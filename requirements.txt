@@ -6,8 +6,8 @@ requests>=2.31.0
 # Jira service
 jira>=3.8.0
 
-# GitLab service (coming soon)
-# python-gitlab>=4.0.0
+# GitLab service
+python-gitlab>=4.0.0
 
 # Confluence service (coming soon)
 # atlassian-python-api>=3.41.0

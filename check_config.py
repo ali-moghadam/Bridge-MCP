@@ -16,6 +16,9 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+# Define which services are actually implemented
+IMPLEMENTED_SERVICES = {'jira', 'gitlab'}
+
 def print_section(title: str):
     """Print a section header."""
     print(f"\n{'='*60}")
@@ -59,12 +62,12 @@ def check_dependencies():
     required_packages = [
         ("mcp", "Model Context Protocol"),
         ("jira", "Jira client"),
+        ("gitlab", "GitLab client"),
         ("dotenv", "Environment configuration"),
         ("requests", "HTTP requests"),
     ]
 
     optional_packages = [
-        ("gitlab", "GitLab client (coming soon)"),
         ("atlassian", "Confluence client (coming soon)"),
     ]
 
@@ -95,10 +98,17 @@ def check_jira_config():
 
     url_ok = check_env_var("JIRA_URL", required=True)
     token_ok = check_env_var("JIRA_PERSONAL_ACCESS_TOKEN", required=True)
-    check_env_var("JIRA_VERIFY_SSL", required=False)
+    verify_ok = check_env_var("JIRA_VERIFY_SSL", required=False)
+
+    # Warn about extra/unused variables that might confuse users
+    if os.getenv("JIRA_PERSONAL_ACCESS_TOKEN2"):
+        print("  ⚠️ Note: JIRA_PERSONAL_ACCESS_TOKEN2 is set but ignored. The app only uses JIRA_PERSONAL_ACCESS_TOKEN.")
 
     if url_ok and token_ok:
         print("\n  Status: Jira service will be ENABLED")
+        if verify_ok:
+            v = os.getenv("JIRA_VERIFY_SSL", "true")
+            print(f"  Info: SSL verification is {'enabled' if v.strip().lower() in {'1','true','yes','on'} else 'disabled'} (JIRA_VERIFY_SSL={v})")
         return True
     else:
         print("\n  Status: Jira service will be DISABLED")
@@ -106,14 +116,14 @@ def check_jira_config():
 
 def check_gitlab_config():
     """Check GitLab configuration."""
-    print_section("GitLab Configuration (Coming Soon)")
+    print_section("GitLab Configuration")
 
     url_ok = check_env_var("GITLAB_URL", required=False)
     token_ok = check_env_var("GITLAB_PERSONAL_ACCESS_TOKEN", required=False)
     check_env_var("GITLAB_VERIFY_SSL", required=False)
 
     if url_ok and token_ok:
-        print("\n  Status: GitLab service will be ENABLED (when implemented)")
+        print("\n  Status: GitLab service will be ENABLED")
         return True
     else:
         print("\n  Status: GitLab service will be DISABLED")
@@ -121,7 +131,7 @@ def check_gitlab_config():
 
 def check_confluence_config():
     """Check Confluence configuration."""
-    print_section("Confluence Configuration (Coming Soon)")
+    print_section("Confluence Configuration (NOT YET IMPLEMENTED)")
 
     url_ok = check_env_var("CONFLUENCE_URL", required=False)
     token_ok = check_env_var("CONFLUENCE_API_TOKEN", required=False)
@@ -129,10 +139,10 @@ def check_confluence_config():
     check_env_var("CONFLUENCE_VERIFY_SSL", required=False)
 
     if url_ok and token_ok and username_ok:
-        print("\n  Status: Confluence service will be ENABLED (when implemented)")
+        print("\n  Status: Confluence credentials configured but service NOT YET IMPLEMENTED")
         return True
     else:
-        print("\n  Status: Confluence service will be DISABLED")
+        print("\n  Status: Confluence service NOT YET IMPLEMENTED")
         return False
 
 def check_file_structure():
@@ -180,14 +190,28 @@ def main():
     disabled_services = []
 
     if checks[3][1]:  # Jira
-        enabled_services.append("Jira")
+        if 'jira' in IMPLEMENTED_SERVICES:
+            enabled_services.append("Jira")
+        else:
+            disabled_services.append("Jira (not yet implemented)")
     else:
         disabled_services.append("Jira")
 
-    # GitLab and Confluence are not yet implemented, so always show as disabled
-    disabled_services.append("GitLab (not yet implemented)")
-    disabled_services.append("Confluence (not yet implemented)")
+    if checks[4][1]:  # GitLab
+        if 'gitlab' in IMPLEMENTED_SERVICES:
+            enabled_services.append("GitLab")
+        else:
+            disabled_services.append("GitLab (not yet implemented)")
+    else:
+        disabled_services.append("GitLab")
 
+    if checks[5][1]:  # Confluence
+        if 'confluence' in IMPLEMENTED_SERVICES:
+            enabled_services.append("Confluence")
+        else:
+            disabled_services.append("Confluence (not yet implemented)")
+    else:
+        disabled_services.append("Confluence")
 
     print(f"\n  Enabled services: {', '.join(enabled_services) if enabled_services else 'None'}")
     print(f"  Disabled services: {', '.join(disabled_services) if disabled_services else 'None'}")
@@ -220,4 +244,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

@@ -2,142 +2,120 @@
 
 A unified Model Context Protocol (MCP) server that provides seamless integration with enterprise tools including Jira, GitLab, and Confluence. Access your project management, code repositories, and documentation from a single interface.
 
-## Overview
+## What Does It Do?
 
-Bridge-MCP is designed to work in private/VPN environments (like FortiClient), making it easy to connect AI assistants like Claude and GitHub Copilot to your enterprise tools.
+Bridge-MCP connects AI assistants (Claude, GitHub Copilot) to your enterprise tools:
 
-### Supported Integrations
+- **Jira**: Search issues, view details, get comments and attachments
+- **GitLab**: Browse projects, merge requests, pipelines, and issues
+- **Confluence**: Coming soon
 
-#### Jira (Available Now)
-- Fetch issue details by key
-- Search issues using JQL
-- Get issue comments and attachments
-- View inline images from issues
+Works with private/VPN instances (like FortiClient).
 
-#### GitLab (Coming Soon)
-- Repository management
-- Merge request tracking
-- Pipeline status
+## Quick Start
 
-#### Confluence (Coming Soon)
-- Page content retrieval
-- Space browsing
-- Documentation search
+### 1. Install Dependencies
 
-## Architecture
-
-Bridge-MCP uses a modular architecture where each service (Jira, GitLab, Confluence) is implemented as a separate module:
-
-```
-src/
-├── bridge_mcp_server.py       # Main unified MCP server
-└── services/
-    ├── jira_service.py        # Jira integration (available now)
-    ├── gitlab_service.py      # GitLab integration (coming soon)
-    └── confluence_service.py  # Confluence integration (coming soon)
-```
-
-**Benefits:**
-- **Modular**: Each service is independent and can be enabled/disabled
-- **Scalable**: Easy to add new services
-- **Maintainable**: Changes to one service don't affect others
-- **Flexible**: Use one service or all three simultaneously
-
-## Requirements
-- Python 3.10+
-- VPN connection (FortiClient or similar) if accessing private instances
-- Authentication credentials for the services you want to use:
-  - Jira: Personal Access Token (PAT) with read permissions
-  - GitLab: Personal Access Token (coming soon)
-  - Confluence: API Token (coming soon)
-
-## Installation
 ```bash
-# (optional) create a venv
-python -m venv .venv
-source .venv/bin/activate
-
-# install dependencies
 pip install -r requirements.txt
 ```
 
-## Configuration
+### 2. Configure Your Credentials
 
-Create a `.env` file in the project root with your service credentials. You can copy the template:
+Create a `.env` file in the project root:
 
-```bash
-cp .env.example .env
-# Then edit .env with your actual credentials
-```
-
-Each service is optional - configure only the services you want to use:
-
-### Jira Configuration
 ```env
+# Jira (Optional)
 JIRA_URL=https://your-jira-instance.com
-JIRA_PERSONAL_ACCESS_TOKEN=your_pat_here
-JIRA_VERIFY_SSL=true
-```
+JIRA_PERSONAL_ACCESS_TOKEN=your_jira_token
 
-### GitLab Configuration (Coming Soon)
-```env
+# GitLab (Optional)
 GITLAB_URL=https://your-gitlab-instance.com
-GITLAB_PERSONAL_ACCESS_TOKEN=your_token_here
-GITLAB_VERIFY_SSL=true
+GITLAB_PERSONAL_ACCESS_TOKEN=your_gitlab_token
 ```
 
-### Confluence Configuration (Coming Soon)
-```env
-CONFLUENCE_URL=https://your-confluence-instance.com
-CONFLUENCE_API_TOKEN=your_token_here
-CONFLUENCE_VERIFY_SSL=true
-```
+**Getting Your Tokens:**
+- **Jira**: Settings > Personal Access Tokens
+- **GitLab**: User Settings > Access Tokens (needs `api`, `read_api`, `read_repository` scopes)
 
-**Security Note:**
-- Do not commit `.env` to version control
-- All integrations use token-based authentication (no username/password)
+**Note:** Configure only the services you want to use. Both are optional.
 
-## Usage
+### 3. Verify Your Setup
 
-### Check Configuration
-Before starting the server, verify your configuration:
+Run the configuration checker to ensure everything is set up correctly:
+
 ```bash
 python check_config.py
 ```
 
-This will check:
-- Python version and dependencies
-- Environment variables and credentials
-- Which services will be enabled
-- File structure integrity
+This will verify:
+- ✓ Python version and dependencies
+- ✓ Environment variables are set correctly
+- ✓ Which services will be enabled
+- ✓ File structure is correct
 
-### Run Connection Tests
-```bash
-source .venv/bin/activate
-python test_connection.py  # Test Jira connection (if available)
-```
+If you see "✓ Configuration looks good!", you're ready to proceed.
 
-### Run the MCP Server
+### 4. Verify the Server Works (Optional)
+
+You can optionally verify the server starts correctly:
+
 ```bash
-source .venv/bin/activate
 python src/bridge_mcp_server.py
 ```
 
-The server will start and wait for MCP client connections (Claude Desktop, GitHub Copilot, etc.)
+The server will start and you should see:
+```
+INFO - Initializing Bridge-MCP services...
+INFO - ✓ Jira service enabled
+INFO - ✓ GitLab service enabled
+INFO - Bridge-MCP initialized with 2/3 service(s) enabled
+INFO - Bridge-MCP Server starting...
+```
 
-**Note:** The server will automatically detect and enable services based on available credentials in your `.env` file. You can use one, two, or all three services simultaneously.
+**Press Ctrl+C to stop.** This is just for verification - your AI assistant will automatically start/stop the server when needed. You don't need to keep it running.
 
-## Integration with AI Assistants
+### 5. Connect to Your AI Assistant
 
-### Claude Desktop Setup
+Now configure your AI assistant to use Bridge-MCP.
 
-Configure Claude Desktop on macOS by editing `~/Library/Application Support/Claude/claude_desktop_config.json`:
+**Choose your AI assistant below:**
+
+## Setup for Claude Desktop
+
+Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
 ```json
 {
   "mcpServers": {
     "bridge-mcp": {
       "command": "python",
-      "args": ["/path/to/Bridge-MCP/src/bridge_mcp_server.py"],
+      "args": ["/FULL/PATH/TO/bridge-mcp/src/bridge_mcp_server.py"]
+    }
+  }
+}
+```
+
+**Important:** 
+- Replace `/FULL/PATH/TO/bridge-mcp` with your actual path (e.g., `/Users/yourname/bridge-mcp`)
+- The server will read credentials from your `.env` file automatically
+- Restart Claude Desktop after saving
+
+That's it! Claude will now have access to your Jira and GitLab data.
+
+## Setup for GitHub Copilot (JetBrains)
+
+Edit `~/.config/github-copilot/intellij/mcp.json`:
+
+```json
+{
+  "servers": {
+    "bridge-mcp": {
+      "type": "stdio",
+      "command": "/Users/YOUR_USERNAME/Bridge-MCP/.venv/bin/python3",
+      "args": [
+        "/Users/YOUR_USERNAME/Bridge-MCP/src/bridge_mcp_server.py"
+      ],
       "env": {
         "JIRA_URL": "https://your-jira-instance.com",
         "JIRA_PERSONAL_ACCESS_TOKEN": "${env:JIRA_PERSONAL_ACCESS_TOKEN}",
@@ -153,59 +131,10 @@ Configure Claude Desktop on macOS by editing `~/Library/Application Support/Clau
 }
 ```
 
-**Tips:**
-- Replace `/path/to/Bridge-MCP` with your actual installation path
-- You can set `JIRA_PERSONAL_ACCESS_TOKEN` globally in your shell profile instead of the config
-- Restart Claude Desktop after configuration changes
-
-### GitHub Copilot Setup (JetBrains IDEs)
-
-For GitHub Copilot in JetBrains IDEs (IntelliJ, PyCharm, etc.), edit `~/.config/github-copilot/intellij/mcp.json`:
-```json
-{
-  "servers": {
-    "bridge-mcp": {
-      "type": "stdio",
-      "command": "/path/to/Bridge-MCP/.venv/bin/python3",
-      "args": [
-        "/path/to/Bridge-MCP/src/bridge_mcp_server.py"
-      ],
-      "env": {
-        "JIRA_URL": "https://your-jira-instance.com",
-        "JIRA_PERSONAL_ACCESS_TOKEN": "your_personal_access_token_here",
-        "JIRA_VERIFY_SSL": "true",
-        "GITLAB_URL": "https://gitlab.com",
-        "GITLAB_PERSONAL_ACCESS_TOKEN": "your_gitlab_token_here",
-        "CONFLUENCE_URL": "https://your-confluence-instance.com",
-        "CONFLUENCE_API_TOKEN": "your_confluence_token_here",
-        "CONFLUENCE_USERNAME": "your_email@company.com"
-      }
-    }
-  }
-}
-```
-
-**Example with actual paths** (macOS):
-```json
-{
-  "servers": {
-    "bridge-mcp": {
-      "type": "stdio",
-      "command": "/Users/YOUR_USERNAME/Bridge-MCP/.venv/bin/python3",
-      "args": [
-        "/Users/YOUR_USERNAME/Bridge-MCP/src/bridge_mcp_server.py"
-      ],
-      "env": {
-        "JIRA_URL": "https://your-jira-instance.com",
-        "JIRA_PERSONAL_ACCESS_TOKEN": "your_personal_access_token_here",
-        "JIRA_VERIFY_SSL": "true"
-      }
-    }
-  }
-}
-```
-
-After configuring, restart your JetBrains IDE to use Bridge-MCP with GitHub Copilot.
+**Important:**
+- Replace `/FULL/PATH/TO/bridge-mcp` with your actual path (e.g., `/Users/yourname/bridge-mcp`)
+- The server will read credentials from your `.env` file automatically
+- Restart your IDE after saving
 
 ## Available Tools
 
@@ -216,10 +145,15 @@ After configuring, restart your JetBrains IDE to use Bridge-MCP with GitHub Copi
 4. **get_issue_attachments** — List all attachments metadata
 5. **get_issue_media** — Download and display inline images from issues
 
-### GitLab Tools (Coming Soon)
-- Repository information
-- Merge request details
-- Pipeline status
+### GitLab Tools
+1. **get_gitlab_project** — Get detailed information about a project by ID or path
+2. **list_gitlab_projects** — List and search accessible projects
+3. **get_merge_request** — Get detailed information about a specific merge request
+4. **list_merge_requests** — List merge requests for a project (opened, closed, merged, or all)
+5. **list_pipelines** — List CI/CD pipelines for a project with status filtering
+6. **get_pipeline** — Get detailed information about a specific pipeline including jobs
+7. **list_gitlab_issues** — List issues for a GitLab project
+8. **get_gitlab_issue** — Get detailed information about a specific GitLab issue
 
 ### Confluence Tools (Coming Soon)
 - Page content retrieval
@@ -228,30 +162,24 @@ After configuring, restart your JetBrains IDE to use Bridge-MCP with GitHub Copi
 
 ## Troubleshooting
 
-### Common Issues
+**"Connection failed" or "401 Unauthorized"**
+- Check your VPN is connected (for private instances)
+- Verify your tokens in `.env` are correct
+- Make sure you can access Jira/GitLab in your browser
 
-**401 Unauthorized**
-- Your authentication token is invalid or expired
-- Generate a new token and update `.env`
+**"SSL Certificate Error"**
+Add to your `.env`:
+```env
+JIRA_VERIFY_SSL=false
+GITLAB_VERIFY_SSL=false
+```
 
-**SSL Certificate Errors**
-- Set `*_VERIFY_SSL=false` in `.env` (use only if necessary for self-signed certificates)
-- Example: `JIRA_VERIFY_SSL=false`
+**"No tools available"**
+- Ensure `.env` file exists in the bridge-mcp directory
+- Check you have Python 3.10+ installed: `python --version`
+- Verify dependencies are installed: `pip install -r requirements.txt`
 
-**Network Connection Errors**
-- Ensure your VPN (FortiClient or similar) is connected
-- Verify the service URLs are correct in `.env`
-- Check that you can access the services in your web browser
-
-**Server Not Starting**
-- Verify all required dependencies are installed: `pip install -r requirements.txt`
-- Check that your Python version is 3.10 or higher: `python --version`
-- Ensure `.env` file has correct configuration
-
-### Getting Help
-- Check the logs for detailed error messages
-- Verify your credentials work by accessing the web interfaces directly
-- See [TOOLS.md](TOOLS.md) for detailed documentation on available tools
+**For detailed tool documentation**, see [TOOLS.md](TOOLS.md)
 
 ## Extending Bridge-MCP
 
