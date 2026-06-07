@@ -129,14 +129,31 @@ async def call_tool(name: str, arguments: Any) -> Sequence[TextContent | ImageCo
             )]
         return await handle_jira_tool_call(name, arguments)
 
-    # GitLab tools (when implemented)
-    gitlab_tools = {"get_gitlab_project", "list_gitlab_projects", "list_merge_requests", "get_merge_request",
-                    "list_pipelines", "get_pipeline", "list_gitlab_issues", "get_gitlab_issue"}
+    # GitLab tools
+    gitlab_tools = {
+        # Projects
+        "get_gitlab_project", "list_gitlab_projects",
+        # Merge Requests
+        "get_merge_request", "list_merge_requests", "list_mr_notes", "create_mr_note",
+        # Issues
+        "get_gitlab_issue", "list_gitlab_issues", "create_gitlab_issue",
+        "list_issue_notes", "create_issue_note",
+        # Pipelines & CI
+        "list_pipelines", "get_pipeline", "retry_pipeline", "cancel_pipeline",
+        "list_pipeline_jobs", "get_job_log",
+        # Repository
+        "list_branches", "get_branch", "list_commits", "get_commit",
+        "list_repository_tree", "get_file",
+        # Releases & Tags
+        "list_releases", "get_release", "list_tags",
+        # Members & Labels
+        "list_project_members", "list_labels",
+    }
     if name in gitlab_tools:
         if not enabled_services.get("gitlab", False):
             return [TextContent(
                 type="text",
-                text="Error: GitLab service is not enabled or not yet implemented."
+                text="Error: GitLab service is not enabled. Run: glab auth login"
             )]
         return await handle_gitlab_tool_call(name, arguments)
 
