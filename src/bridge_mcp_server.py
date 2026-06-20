@@ -34,6 +34,7 @@ from services.jira_service import (
 from services.gitlab_service import (
     init_gitlab_client,
     get_gitlab_tools,
+    gitlab_tool_names,
     handle_gitlab_tool_call,
 )
 from services.confluence_service import (
@@ -63,7 +64,7 @@ app = Server("bridge-mcp")
 enabled_services: dict[str, bool] = {}
 
 
-def initialize_services() -> None:
+async def initialize_services() -> None:
     """Initialize all available services."""
     global enabled_services
 
@@ -77,8 +78,8 @@ def initialize_services() -> None:
     else:
         logger.info("✗ Jira service disabled (credentials not found)")
 
-    # Initialize GitLab
-    gitlab_client = init_gitlab_client()
+    # Initialize GitLab (connects to the instance's native MCP endpoint)
+    gitlab_client = await init_gitlab_client()
     enabled_services["gitlab"] = gitlab_client is not None
     if enabled_services["gitlab"]:
         logger.info("✓ GitLab service enabled")
@@ -133,31 +134,12 @@ async def call_tool(name: str, arguments: Any) -> Sequence[TextContent | ImageCo
             )]
         return await handle_jira_tool_call(name, arguments)
 
-    # GitLab tools
-    gitlab_tools = {
-        # Projects
-        "get_gitlab_project", "list_gitlab_projects",
-        # Merge Requests
-        "get_merge_request", "list_merge_requests", "list_mr_notes", "create_mr_note",
-        # Issues
-        "get_gitlab_issue", "list_gitlab_issues", "create_gitlab_issue",
-        "list_issue_notes", "create_issue_note",
-        # Pipelines & CI
-        "list_pipelines", "get_pipeline", "retry_pipeline", "cancel_pipeline",
-        "list_pipeline_jobs", "get_job_log",
-        # Repository
-        "list_branches", "get_branch", "list_commits", "get_commit",
-        "list_repository_tree", "get_file",
-        # Releases & Tags
-        "list_releases", "get_release", "list_tags",
-        # Members & Labels
-        "list_project_members", "list_labels",
-    }
-    if name in gitlab_tools:
+    # GitLab tools (names are reported dynamically by the instance's MCP endpoint)
+    if name in gitlab_tool_names():
         if not enabled_services.get("gitlab", False):
             return [TextContent(
                 type="text",
-                text="Error: GitLab service is not enabled. Run: glab auth login"
+                text="Error: GitLab service is not enabled. Check GITLAB_URL and GITLAB_PERSONAL_ACCESS_TOKEN."
             )]
         return await handle_gitlab_tool_call(name, arguments)
 
@@ -183,7 +165,7 @@ async def main() -> None:
     """Main entry point for the Bridge-MCP server."""
     try:
         # Initialize all services
-        initialize_services()
+        await initialize_services()
 
         # Check if at least one service is enabled
         if not any(enabled_services.values()):

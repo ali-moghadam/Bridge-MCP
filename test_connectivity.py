@@ -21,6 +21,8 @@ file. If you prefer not to use `.env`, pass the same variables via the `env`
 block of your MCP client config instead.
 """
 
+import asyncio
+import inspect
 import os
 import sys
 
@@ -38,9 +40,16 @@ from services.confluence_service import init_confluence_client
 
 
 def _reachable(init_fn) -> bool:
-    """A service is reachable when its init returns a truthy client/flag."""
+    """A service is reachable when its init returns a truthy client/flag.
+
+    Some inits are async (GitLab connects to the MCP endpoint), so await the
+    coroutine when one is returned.
+    """
     try:
-        return bool(init_fn())
+        result = init_fn()
+        if inspect.iscoroutine(result):
+            result = asyncio.run(result)
+        return bool(result)
     except Exception as e:  # network/auth errors surface as not-reachable
         print(f"    error: {e}")
         return False
@@ -53,7 +62,7 @@ def test_jira_reachable():
 
 
 def test_gitlab_reachable():
-    assert _reachable(init_gitlab_client), "GitLab not reachable — check GITLAB_BACKEND / GITLAB_URL / GITLAB_PERSONAL_ACCESS_TOKEN"
+    assert _reachable(init_gitlab_client), "GitLab not reachable — check GITLAB_URL / GITLAB_PERSONAL_ACCESS_TOKEN"
 
 
 def test_confluence_reachable():

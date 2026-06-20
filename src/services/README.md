@@ -20,30 +20,26 @@ This directory contains service modules for Bridge-MCP. Each service is implemen
 - `get_issue_media` - Download and display images
 
 ### ✅ GitLab Service (`gitlab_service.py`)
-**Status:** Fully implemented. Two selectable backends.
+**Status:** Fully implemented.
 
-`gitlab_service.py` is a thin facade that selects a backend at init and delegates to it:
-- `gitlab_mcp.py` — default. MCP client to the instance's native endpoint `<GITLAB_URL>/api/v4/mcp` (streamable HTTP, Bearer auth). Tools are exposed via **dynamic passthrough** — whatever the instance's MCP endpoint reports.
-- `gitlab_glab.py` — shells out to the `glab` CLI. Exposes the fixed 28-tool set below.
+`gitlab_service.py` is an MCP client to the instance's native endpoint
+`<GITLAB_URL>/api/v4/mcp` (streamable HTTP, Bearer auth). Tools are exposed via
+**dynamic passthrough** — whatever the instance's MCP endpoint reports. No
+external binary required. If the endpoint is unreachable or auth fails, the
+GitLab service is disabled (no fallback).
 
-Backend is chosen by `GITLAB_BACKEND` (`mcp` default | `glab`). No automatic fallback: if the selected backend fails init, the GitLab service is disabled.
-
-The facade exposes `init_gitlab_client()`, `get_gitlab_tools()`, `gitlab_tool_names()`, and `handle_gitlab_tool_call()`. `gitlab_tool_names()` returns the active backend's tool-name set and is what the server uses to route calls (the mcp backend's names are dynamic, so the server cannot hardcode them).
+It exposes `init_gitlab_client()` (async — connects and caches the tool set),
+`get_gitlab_tools()`, `gitlab_tool_names()`, and `handle_gitlab_tool_call()`.
+`gitlab_tool_names()` returns the instance's tool-name set and is what the
+server uses to route calls (the names are dynamic, so the server cannot
+hardcode them).
 
 **Environment Variables:**
-- `GITLAB_BACKEND` - `mcp` (default) or `glab`
 - `GITLAB_URL` - GitLab instance URL (default: https://gitlab.com)
-- `GITLAB_PERSONAL_ACCESS_TOKEN` - Personal Access Token (Bearer token for `mcp`; `GITLAB_TOKEN` for `glab`, or use `glab auth login`)
+- `GITLAB_PERSONAL_ACCESS_TOKEN` - Personal Access Token, sent as a Bearer token
 - `GITLAB_VERIFY_SSL` - SSL verification (default: true)
 
-**Tools (`glab` backend, 28):**
-- Projects: `get_gitlab_project`, `list_gitlab_projects`
-- Merge requests: `get_merge_request`, `list_merge_requests`, `list_mr_notes`, `create_mr_note`
-- Issues: `get_gitlab_issue`, `list_gitlab_issues`, `create_gitlab_issue`, `list_issue_notes`, `create_issue_note`
-- Pipelines/jobs: `list_pipelines`, `get_pipeline`, `retry_pipeline`, `cancel_pipeline`, `list_pipeline_jobs`, `get_job_log`
-- Repository: `list_branches`, `get_branch`, `list_commits`, `get_commit`, `list_repository_tree`, `get_file`
-- Releases/tags: `list_releases`, `get_release`, `list_tags`
-- Project: `list_project_members`, `list_labels`
+**Tools:** dynamic — reported by the instance's MCP endpoint (requires GitLab 18.x+).
 
 ### ✅ Confluence Service (`confluence_service.py`)
 **Status:** Fully implemented

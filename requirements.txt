@@ -2,12 +2,12 @@
 mcp>=0.9.0
 python-dotenv>=1.0.0
 requests>=2.31.0
+httpx>=0.27.0
 
 # Jira service
 jira>=3.8.0
 
-# GitLab service
-python-gitlab>=4.0.0
+# GitLab service connects to the instance's native MCP endpoint over HTTP (uses mcp + httpx).
 
 # Confluence service
 atlassian-python-api>=3.41.0

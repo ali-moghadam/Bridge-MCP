@@ -3,7 +3,7 @@
 A unified Model Context Protocol (MCP) server that connects AI assistants to your enterprise tools: **Jira**, **GitLab**, and **Confluence**. Browse issues, merge requests, pipelines, and documentation from a single MCP server.
 
 - **Jira** — issues, JQL search, comments, attachments, inline media
-- **GitLab** — projects, merge requests, issues, pipelines, jobs, branches, commits, files, releases, tags, members, labels (two backends: native **GitLab MCP** endpoint or the **`glab` CLI**)
+- **GitLab** — projects, merge requests, issues, pipelines, jobs, branches, commits, files, releases, tags, members, labels (via your instance's native **GitLab MCP** endpoint)
 - **Confluence** — pages, spaces, search, child pages, attachments, comments
 
 Works with self-hosted / private / VPN instances (e.g. behind FortiClient), with per-service SSL-verification toggles and Personal Access Token auth.
@@ -13,10 +13,7 @@ Works with self-hosted / private / VPN instances (e.g. behind FortiClient), with
 ## Requirements
 
 - **Python 3.10+**
-- **GitLab backend** (GitLab service only) — pick one via `GITLAB_BACKEND`:
-  - `mcp` (default) — connects to your instance's native MCP endpoint (`<GITLAB_URL>/api/v4/mcp`). No extra binary. Tools are exposed dynamically from the instance.
-  - `glab` — the [`glab` CLI](https://gitlab.com/gitlab-org/cli) on your `PATH`. The service shells out to `glab`.
-  - If the selected backend fails to initialize, GitLab tools are disabled (Jira/Confluence still work). No automatic fallback between backends.
+- **GitLab** (GitLab service only) — connects to your instance's native MCP endpoint (`<GITLAB_URL>/api/v4/mcp`) over HTTP. No extra binary. Tools are exposed dynamically from the instance, so the exact set depends on your GitLab version. Requires a recent GitLab (the MCP endpoint is exposed by GitLab 18.x and later). If the endpoint is unreachable or auth fails, GitLab tools are disabled (Jira/Confluence still work).
 
 ---
 
@@ -31,14 +28,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-The default `mcp` backend needs no extra binary. To use the `glab` backend, install the `glab` binary on your `PATH`:
-
-```bash
-# macOS
-brew install glab
-# verify
-glab --version
-```
+The GitLab service talks to your instance's MCP endpoint over HTTP — no extra binary required.
 
 ### 2. Configure credentials
 
@@ -50,8 +40,7 @@ JIRA_URL=https://your-jira-instance.com
 JIRA_PERSONAL_ACCESS_TOKEN=your_jira_pat
 JIRA_VERIFY_SSL=true
 
-# --- GitLab ---
-GITLAB_BACKEND=mcp                  # mcp (default, native GitLab MCP endpoint) | glab (CLI)
+# --- GitLab (native MCP endpoint at <GITLAB_URL>/api/v4/mcp) ---
 GITLAB_URL=https://your-gitlab-instance.com
 GITLAB_PERSONAL_ACCESS_TOKEN=glpat-xxxxx
 GITLAB_VERIFY_SSL=true
@@ -65,7 +54,7 @@ CONFLUENCE_VERIFY_SSL=true
 
 **Getting tokens:**
 - **Jira**: Settings → Personal Access Tokens
-- **GitLab**: User Settings → Access Tokens (scopes: `api`, `read_api`, `read_repository`). The token is used as a Bearer token for the `mcp` backend, and as `GITLAB_TOKEN` for the `glab` backend. With the `glab` backend you may instead run `glab auth login` and omit the token — it falls back to `glab`'s stored credentials.
+- **GitLab**: User Settings → Access Tokens (scopes: `api`, `read_api`, `read_repository`). Sent to the MCP endpoint as a Bearer token.
 - **Confluence**: Atlassian Account → Security → API Tokens
 
 > Self-signed certs / private instances: set the relevant `*_VERIFY_SSL=false`.
@@ -250,16 +239,7 @@ To confirm tools are loaded: run `/mcp` in-session (Claude Code, Gemini CLI) or 
 | `get_issue_media` | Download and display inline images |
 
 ### GitLab
-With the **`glab` backend**, the 28 tools below are exposed. With the default **`mcp` backend**, tools are provided dynamically by your GitLab instance's MCP endpoint, so the exact set and names depend on your instance/version.
-
-glab backend tools:
-Projects: `get_gitlab_project`, `list_gitlab_projects`
-Merge requests: `get_merge_request`, `list_merge_requests`, `list_mr_notes`, `create_mr_note`
-Issues: `get_gitlab_issue`, `list_gitlab_issues`, `create_gitlab_issue`, `list_issue_notes`, `create_issue_note`
-Pipelines/jobs: `list_pipelines`, `get_pipeline`, `retry_pipeline`, `cancel_pipeline`, `list_pipeline_jobs`, `get_job_log`
-Repository: `list_branches`, `get_branch`, `list_commits`, `get_commit`, `list_repository_tree`, `get_file`
-Releases/tags: `list_releases`, `get_release`, `list_tags`
-Project: `list_project_members`, `list_labels`
+GitLab tools are provided **dynamically** by your instance's native MCP endpoint (`<GITLAB_URL>/api/v4/mcp`), so the exact set and names depend on your GitLab version. Run `/mcp` in your client (or check its tools panel) to see what your instance exposes — typically projects, merge requests, issues, pipelines/jobs, repository, releases/tags, members, and labels.
 
 ### Confluence (7)
 | Tool | Description |
@@ -280,8 +260,7 @@ See [TOOLS.md](TOOLS.md) for full parameter docs.
 
 **"No tools available" / service disabled**
 - Ensure `.env` exists in the project root and the relevant credentials are set.
-- GitLab (`mcp` backend): confirm `<GITLAB_URL>/api/v4/mcp` is reachable and `GITLAB_PERSONAL_ACCESS_TOKEN` is valid.
-- GitLab (`glab` backend): confirm `glab --version` works and you are authenticated (`glab auth status` or a valid `GITLAB_PERSONAL_ACCESS_TOKEN`).
+- GitLab: confirm `<GITLAB_URL>/api/v4/mcp` is reachable, `GITLAB_PERSONAL_ACCESS_TOKEN` is valid, and your GitLab is recent enough to expose the MCP endpoint (18.x+).
 - Python 3.10+: `python --version`. Dependencies: `pip install -r requirements.txt`.
 
 **401 Unauthorized / connection failed**
