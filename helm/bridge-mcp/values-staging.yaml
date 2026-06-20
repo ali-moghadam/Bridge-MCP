@@ -1,0 +1,57 @@
+# Staging overrides — OKD cluster okd4.teh-1.snappcloud.io, namespace baly-internal.
+# Secrets (auth token + PATs) are injected at deploy time via --set-string in CI.
+
+replicaCount: 1
+fullnameOverride: bridge-mcp
+
+serviceAccount:
+  create: false
+
+# Set at deploy time via --set in CI.
+registryInternal: ""
+projectNamespace: ""
+
+image:
+  registry: ""        # → $OKD_INTERNAL_REGISTRY
+  repository: ""       # → $OKD_PROJECT/bridge-mcp
+  tag: "staging"
+  pullPolicy: Always
+
+# OpenShift Route → https://bridge-mcp-baly-internal.apps.private.okd4.teh-1.snappcloud.io/mcp
+route:
+  enabled: true
+  host: "bridge-mcp-baly-internal.apps.private.okd4.teh-1.snappcloud.io"
+  timeout: "1h"
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+
+# OVN-Kubernetes — required for probes to pass.
+networkPolicy:
+  enabled: true
+
+# ── Services ───────────────────────────────────────────────────────────────────
+# URLs here; tokens injected via --set-string in CI.
+jira:
+  url: ""
+  verifySSL: "false"
+
+gitlab:
+  url: "https://gitlab.snapp.ir"
+  verifySSL: "false"
+
+confluence:
+  url: ""
+  username: ""
+  verifySSL: "false"
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+autoscaling:
+  enabled: false

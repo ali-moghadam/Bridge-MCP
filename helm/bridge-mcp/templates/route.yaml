@@ -1,0 +1,30 @@
+{{- if .Values.route.enabled }}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "bridge-mcp.fullname" . }}
+  labels:
+    {{- include "bridge-mcp.labels" . | nindent 4 }}
+  annotations:
+    # MCP keeps long-lived SSE GET streams open; raise the default 30s Route timeout.
+    haproxy.router.openshift.io/timeout: {{ .Values.route.timeout | default "1h" | quote }}
+    {{- with .Values.route.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  {{- if .Values.route.host }}
+  host: {{ .Values.route.host }}
+  {{- end }}
+  to:
+    kind: Service
+    name: {{ include "bridge-mcp.fullname" . }}
+    weight: 100
+  port:
+    targetPort: http
+  {{- with .Values.route.tls }}
+  tls:
+    termination: {{ .termination | default "edge" }}
+    insecureEdgeTerminationPolicy: {{ .insecureEdgeTerminationPolicy | default "Redirect" }}
+  {{- end }}
+  wildcardPolicy: None
+{{- end }}

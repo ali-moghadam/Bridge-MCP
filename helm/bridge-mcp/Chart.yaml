@@ -1,0 +1,11 @@
+apiVersion: v2
+name: bridge-mcp
+description: Bridge-MCP — unified MCP server (Jira, GitLab, Confluence) over streamable HTTP
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - mcp
+  - jira
+  - gitlab
+  - confluence

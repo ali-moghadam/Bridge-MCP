@@ -1,0 +1,137 @@
+stages:
+  - push
+  - helm_publish
+  - deploy
+  - teardown
+
+variables:
+  # OKD / OpenShift
+  OKD_REGISTRY: "image-registry.apps.private.okd4.teh-1.snappcloud.io"
+  OKD_INTERNAL_REGISTRY: "image-registry.openshift-image-registry.svc:5000"
+  HELM_IMAGE_REGISTRY: "registry.snapp.tech"
+  OKD_PROJECT: "baly-internal"
+  OKD_STAGING_API_SERVER: "https://api.okd4.teh-1.snappcloud.io:6443"
+  IMAGE_URL: "$OKD_REGISTRY/$OKD_PROJECT/bridge-mcp"
+  # GitLab Helm package registry for this project
+  HELM_REPO_URL: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/helm/release"
+  HELM_REPO_USERNAME: "gitlab.token"
+  HELM_REPO_PASSWORD: "${CI_JOB_TOKEN}"
+  HELM_RELEASE: "bridge-mcp"
+
+# ─── Base job templates ───────────────────────────────────────────────────────
+
+.docker_push_base:
+  stage: push
+  image: docker:stable
+  before_script:
+    - docker login -u unused -p ${BUILDER_TOKEN} ${OKD_REGISTRY}
+
+.helm_base:
+  image: ${HELM_IMAGE_REGISTRY}/docker/helm:latest
+  before_script:
+    - mkdir -p /tmp && chmod 1777 /tmp
+    - |
+      if ! helm plugin list 2>/dev/null | grep -qE 'cm-push|push'; then
+        helm plugin install https://github.com/chartmuseum/helm-push || echo "helm plugin install failed"
+      fi
+    - helm repo add --username ${HELM_REPO_USERNAME} --password ${HELM_REPO_PASSWORD} ${CI_PROJECT_NAME} ${HELM_REPO_URL}
+    - helm repo update
+
+.deploy_base:
+  extends: .helm_base
+  stage: deploy
+  variables:
+    VALUE_PATH: ""
+    NAMESPACE: ""
+    API_SERVER: ""
+    IMAGE_TAG: "staging"
+    HISTORY_MAX: "3"
+  script:
+    - helm upgrade ${HELM_RELEASE} ./helm/bridge-mcp/
+      --install
+      --kube-apiserver ${API_SERVER}
+      --kube-token ${BUILDER_TOKEN}
+      --namespace ${NAMESPACE}
+      --history-max ${HISTORY_MAX}
+      --timeout 15m
+      --atomic
+      -f ${VALUE_PATH}
+      --set image.registry=${OKD_INTERNAL_REGISTRY}
+      --set image.repository=${OKD_PROJECT}/bridge-mcp
+      --set image.tag=${IMAGE_TAG}
+      --set registryInternal=${OKD_INTERNAL_REGISTRY}
+      --set projectNamespace=${OKD_PROJECT}
+      --set-string "auth.token=${BRIDGE_MCP_AUTH_TOKEN}"
+      --set-string "jira.token=${JIRA_PAT}"
+      --set-string "gitlab.token=${GITLAB_PAT}"
+      --set-string "confluence.token=${CONFLUENCE_TOKEN}"
+
+# ─── Staging ──────────────────────────────────────────────────────────────────
+
+push:staging:
+  extends: .docker_push_base
+  script:
+    - docker build -t ${IMAGE_URL}:staging .
+    - docker push ${IMAGE_URL}:staging
+  when: manual
+  only:
+    refs:
+      - master
+      - develop
+
+helm_publish:staging:
+  extends: .helm_base
+  stage: helm_publish
+  script:
+    - helm package ./helm/bridge-mcp/
+    - helm cm-push --force ./helm/bridge-mcp/ ${HELM_REPO_URL}
+  needs:
+    - push:staging
+  environment:
+    name: staging
+  only:
+    refs:
+      - master
+      - develop
+
+deploy:staging:
+  extends: .deploy_base
+  when: manual
+  variables:
+    VALUE_PATH: "./helm/bridge-mcp/values-staging.yaml"
+    NAMESPACE: "${OKD_PROJECT}"
+    API_SERVER: "${OKD_STAGING_API_SERVER}"
+  needs:
+    - helm_publish:staging
+  environment:
+    name: staging
+  only:
+    refs:
+      - master
+      - develop
+
+# ─── Teardown ─────────────────────────────────────────────────────────────────
+
+teardown:staging:
+  extends: .helm_base
+  stage: teardown
+  variables:
+    NAMESPACE: "${OKD_PROJECT}"
+    API_SERVER: "${OKD_STAGING_API_SERVER}"
+  script:
+    - helm uninstall ${HELM_RELEASE}
+      --kube-apiserver ${API_SERVER}
+      --kube-token ${BUILDER_TOKEN}
+      --namespace ${NAMESPACE}
+      --timeout 10m
+      || true
+  needs: []
+  when: manual
+  allow_failure: true
+  environment:
+    name: staging
+    action: stop
+  only:
+    refs:
+      - master
+      - develop

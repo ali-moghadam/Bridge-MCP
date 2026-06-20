@@ -1,0 +1,140 @@
+# Default values for bridge-mcp.
+
+# ── OKD / OpenShift registry (set at deploy time via --set) ────────────────────
+registryInternal: ""
+projectNamespace: ""
+
+replicaCount: 1
+
+image:
+  registry: image-registry.openshift-image-registry.svc:5000
+  repository: ""   # <namespace>/bridge-mcp — set per environment
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: false
+  automount: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+
+service:
+  type: ClusterIP
+  port: 8080
+
+# OpenShift Route — gives the public URL https://<host>/mcp.
+route:
+  enabled: false
+  host: ""            # empty → OpenShift auto-assigns <name>-<namespace>.<cluster-domain>
+  timeout: "1h"       # haproxy timeout for long-lived SSE streams
+  annotations: {}
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+
+# ── /mcp endpoint auth ─────────────────────────────────────────────────────────
+# Shared Bearer token required on the /mcp endpoint. Inject at deploy time via
+# --set-string auth.token=$BRIDGE_MCP_AUTH_TOKEN (masked CI variable).
+auth:
+  token: ""
+
+# Reference a pre-existing Secret instead of generating one from the values below.
+# It must contain BRIDGE_MCP_AUTH_TOKEN, JIRA_PERSONAL_ACCESS_TOKEN,
+# GITLAB_PERSONAL_ACCESS_TOKEN, CONFLUENCE_API_TOKEN.
+existingSecret: ""
+
+# ── Services (each is optional — empty token disables that service) ────────────
+jira:
+  url: ""
+  token: ""           # --set-string jira.token=$JIRA_PAT
+  verifySSL: "true"
+
+gitlab:
+  url: "https://gitlab.com"
+  token: ""           # --set-string gitlab.token=$GITLAB_PAT
+  verifySSL: "true"
+
+confluence:
+  url: ""
+  username: ""
+  token: ""           # --set-string confluence.token=$CONFLUENCE_TOKEN
+  verifySSL: "true"
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 15
+  timeoutSeconds: 2
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /readyz
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 2
+  failureThreshold: 6
+
+startupProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  periodSeconds: 5
+  timeoutSeconds: 2
+  failureThreshold: 36
+
+# OVN-Kubernetes clusters enforce NetworkPolicy against kubelet probe traffic;
+# enable so /healthz and /readyz are reachable.
+networkPolicy:
+  enabled: false
+
+lifecycle:
+  preStop:
+    exec:
+      command: ["sleep", "5"]
+
+terminationGracePeriodSeconds: 30
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+extraEnv: []
+extraVolumes: []
+extraVolumeMounts: []

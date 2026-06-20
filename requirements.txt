@@ -1,8 +1,12 @@
 # Core MCP dependencies
-mcp>=0.9.0
+mcp>=1.28.0
 python-dotenv>=1.0.0
 requests>=2.31.0
 httpx>=0.27.0
+
+# HTTP transport (hosted/streamable-HTTP server)
+uvicorn>=0.30.0
+starlette>=0.37.0
 
 # Jira service
 jira>=3.8.0
