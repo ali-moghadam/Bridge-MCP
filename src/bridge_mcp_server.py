@@ -42,8 +42,12 @@ from services.confluence_service import (
     handle_confluence_tool_call,
 )
 
-# Load environment variables
-load_dotenv()
+# Load environment variables from the project-root .env by absolute path.
+# MCP hosts (Claude, Copilot) launch this server from an arbitrary working
+# directory, so a bare load_dotenv() (which searches cwd) would miss the file
+# and the tokens would appear unset. Resolve relative to this file instead.
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(os.path.join(_PROJECT_ROOT, ".env"))
 
 # Configure logging
 logging.basicConfig(

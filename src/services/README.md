@@ -2,65 +2,6 @@
 
 This directory contains service modules for Bridge-MCP. Each service is implemented as a separate module with a consistent interface.
 
-## Service Structure
-
-Each service module should implement three main functions:
-
-### 1. `init_<service>_client()`
-Initialize and return the service client.
-
-**Returns:** Client instance or `None` if credentials are not available
-
-**Example:**
-```python
-def init_jira_client() -> Optional[JIRA]:
-    if not JIRA_PERSONAL_ACCESS_TOKEN:
-        logger.warning("Jira token not found. Jira features disabled.")
-        return None
-    
-    client = JIRA(server=JIRA_URL, token_auth=JIRA_PERSONAL_ACCESS_TOKEN)
-    return client
-```
-
-### 2. `get_<service>_tools()`
-Return a list of Tool definitions for the service.
-
-**Returns:** `list[Tool]`
-
-**Example:**
-```python
-def get_jira_tools() -> list[Tool]:
-    return [
-        Tool(
-            name="get_jira_issue",
-            description="Get issue details",
-            inputSchema={...}
-        ),
-        # More tools...
-    ]
-```
-
-### 3. `handle_<service>_tool_call()`
-Handle tool execution requests for the service.
-
-**Parameters:**
-- `name: str` - The tool name being called
-- `arguments: Any` - The tool arguments
-
-**Returns:** `Sequence[TextContent | ImageContent | EmbeddedResource]`
-
-**Example:**
-```python
-async def handle_jira_tool_call(
-    name: str,
-    arguments: Any
-) -> Sequence[TextContent | ImageContent | EmbeddedResource]:
-    if name == "get_jira_issue":
-        # Handle the tool call
-        return [TextContent(type="text", text="Result")]
-    # More handlers...
-```
-
 ## Available Services
 
 ### ✅ Jira Service (`jira_service.py`)
@@ -78,34 +19,49 @@ async def handle_jira_tool_call(
 - `get_issue_attachments` - Get attachment metadata
 - `get_issue_media` - Download and display images
 
-### 🚧 GitLab Service (`gitlab_service.py`)
-**Status:** Template only (coming soon)
+### ✅ GitLab Service (`gitlab_service.py`)
+**Status:** Fully implemented. Two selectable backends.
+
+`gitlab_service.py` is a thin facade that selects a backend at init and delegates to it:
+- `gitlab_mcp.py` — default. MCP client to the instance's native endpoint `<GITLAB_URL>/api/v4/mcp` (streamable HTTP, Bearer auth). Tools are exposed via **dynamic passthrough** — whatever the instance's MCP endpoint reports.
+- `gitlab_glab.py` — shells out to the `glab` CLI. Exposes the fixed 28-tool set below.
+
+Backend is chosen by `GITLAB_BACKEND` (`mcp` default | `glab`). No automatic fallback: if the selected backend fails init, the GitLab service is disabled.
+
+The facade exposes `init_gitlab_client()`, `get_gitlab_tools()`, `gitlab_tool_names()`, and `handle_gitlab_tool_call()`. `gitlab_tool_names()` returns the active backend's tool-name set and is what the server uses to route calls (the mcp backend's names are dynamic, so the server cannot hardcode them).
 
 **Environment Variables:**
+- `GITLAB_BACKEND` - `mcp` (default) or `glab`
 - `GITLAB_URL` - GitLab instance URL (default: https://gitlab.com)
-- `GITLAB_PERSONAL_ACCESS_TOKEN` - Personal Access Token
+- `GITLAB_PERSONAL_ACCESS_TOKEN` - Personal Access Token (Bearer token for `mcp`; `GITLAB_TOKEN` for `glab`, or use `glab auth login`)
+- `GITLAB_VERIFY_SSL` - SSL verification (default: true)
 
-**Planned Tools:**
-- `get_gitlab_project` - Get project details
-- `list_merge_requests` - List merge requests
-- `get_merge_request` - Get MR details
-- `list_pipelines` - List CI/CD pipelines
-- `get_pipeline` - Get pipeline details
+**Tools (`glab` backend, 28):**
+- Projects: `get_gitlab_project`, `list_gitlab_projects`
+- Merge requests: `get_merge_request`, `list_merge_requests`, `list_mr_notes`, `create_mr_note`
+- Issues: `get_gitlab_issue`, `list_gitlab_issues`, `create_gitlab_issue`, `list_issue_notes`, `create_issue_note`
+- Pipelines/jobs: `list_pipelines`, `get_pipeline`, `retry_pipeline`, `cancel_pipeline`, `list_pipeline_jobs`, `get_job_log`
+- Repository: `list_branches`, `get_branch`, `list_commits`, `get_commit`, `list_repository_tree`, `get_file`
+- Releases/tags: `list_releases`, `get_release`, `list_tags`
+- Project: `list_project_members`, `list_labels`
 
-### 🚧 Confluence Service (`confluence_service.py`)
-**Status:** Template only (coming soon)
+### ✅ Confluence Service (`confluence_service.py`)
+**Status:** Fully implemented
 
 **Environment Variables:**
 - `CONFLUENCE_URL` - Confluence instance URL
 - `CONFLUENCE_API_TOKEN` - API token
 - `CONFLUENCE_USERNAME` - Username/email
+- `CONFLUENCE_VERIFY_SSL` - SSL verification (default: true)
 
-**Planned Tools:**
+**Tools (7):**
 - `get_confluence_page` - Get page content
 - `search_confluence_pages` - Search pages
 - `get_space` - Get space details
 - `list_spaces` - List all spaces
 - `get_page_children` - Get child pages
+- `get_page_attachments` - List page attachments
+- `get_page_comments` - Get page comments
 
 ## Adding a New Service
 
